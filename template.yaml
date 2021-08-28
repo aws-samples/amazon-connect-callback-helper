@@ -1,0 +1,357 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: CallBack Helper for Amazon Connect.
+
+Globals:
+  Function:
+    Timeout: 60
+    MemorySize: 128
+    Runtime: python3.8
+
+Resources:
+
+  cbScheduledCalls: 
+    Type: AWS::DynamoDB::Table
+    Properties: 
+      AttributeDefinitions: 
+        - 
+          AttributeName: "phoneNumber"
+          AttributeType: "S"
+        -
+          AttributeName: "wakeTime"
+          AttributeType: "S"
+
+      KeySchema: 
+        - 
+          AttributeName: "phoneNumber"
+          KeyType: "HASH"
+
+      BillingMode: "PAY_PER_REQUEST"
+
+      GlobalSecondaryIndexes:
+        -
+          IndexName: "wakeTime"
+          KeySchema: 
+          - 
+            AttributeName: "wakeTime"
+            KeyType: "HASH"
+          Projection:
+            ProjectionType: ALL
+
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: True
+      SSESpecification:
+          SSEEnabled: True
+
+  dialSFRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          -
+            Effect: Allow
+            Principal:
+              Service:
+                - states.amazonaws.com
+            Action: sts:AssumeRole
+
+      Policies:
+        -
+          PolicyName: LogAccess
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              -
+                Effect: Allow
+                Action:
+                  - 'logs:CreateLogGroup'
+                  - 'logs:CreateLogDelivery'
+                  - 'logs:CreateLogStream'
+                  - 'logs:PutLogEvents'
+                  - 'logs:GetLogEvents'
+                Resource:
+                  - '*'
+        -
+          PolicyName: ConfigTableAccess
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              -
+                Effect: Allow
+                Action:
+                  - 'dynamodb:PutItem'
+                  - 'dynamodb:DeleteItem'
+                  - 'dynamodb:GetItem'
+                  - 'dynamodb:Scan'
+                  - 'dynamodb:Query'
+                  - 'dynamodb:UpdateItem'
+                Resource:
+                  - !GetAtt cbScheduledCalls.Arn
+        -
+          PolicyName: InvokeLambdaFunctions
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              -
+                Effect: Allow
+                Action: lambda:InvokeFunction
+                Resource:
+                  - !GetAtt dial.Arn
+                  - !GetAtt getAvailableAgents.Arn
+  
+  LambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          -
+            Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns: 
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        
+      Policies:
+        -
+          PolicyName: ControlStateMachine
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              -
+                Effect: Allow
+                Action:
+                  - states:DescribeExecution
+                  - states:StartExecution
+                  - states:StopExecution
+                Resource: 
+                  - '*'
+        -
+          PolicyName: ScheduledCallsListAccess
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              -
+                Effect: Allow
+                Action:
+                  - 'dynamodb:PutItem'
+                  - 'dynamodb:DeleteItem'
+                  - 'dynamodb:GetItem'
+                  - 'dynamodb:Scan'
+                  - 'dynamodb:Query'
+                  - 'dynamodb:UpdateItem'
+                Resource:
+                  - !GetAtt cbScheduledCalls.Arn
+                  - Fn::Join: [ '/', [ !GetAtt cbScheduledCalls.Arn, 'index/wakeTime' ] ] 
+        -
+          PolicyName: InitiateVoiceContact
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              -
+                Effect: Allow
+                Action:
+                  - 'connect:StartOutboundVoiceContact'
+                Resource:
+                  - '*'
+        -
+          PolicyName: SMSnotification
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              -
+                Effect: Allow
+                Action:
+                  - 'mobiletargeting:SendMessages'
+                Resource:
+                  - '*'
+        -
+          PolicyName: connectData
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              -
+                Effect: Allow
+                Action:
+                  - 'connect:GetCurrentMetricData'
+                  - 'connect:DescribeQueue'
+                  - 'connect:DescribeHoursOfOperation'
+                Resource:
+                  - '*'
+        -
+          PolicyName: TableInitialize
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              -
+                Effect: Allow
+                Action:
+                  - 'lambda:AddPermission'
+                  - 'lambda:RemovePermission'
+                  - 'events:PutRule'
+                  - 'events:DeleteRule'
+                  - 'events:PutTargets'
+                  - 'events:RemoveTargets'
+                Resource:
+                  - '*'
+        -
+          PolicyName: ConfigurationAccess
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              -
+                Effect: Allow
+                Action:
+                  - 'secretsManager:GetSecretValue'
+                Resource:
+                  - !Ref CBHelperconfig
+                  
+  CBHelperconfig:
+    Type: AWS::SecretsManager::Secret
+    Properties: 
+      Name: cb-config
+      SecretString: '{"CONNECT_INSTANCE_ID":"Replace with instance ID data","CONNECT_QUEUE_ID":"Replace with queue ID data","CONTACT_FLOW_ID":"Replace with contact flow ID data","PP_REGION":"Replace with your Pinpoint Project Region", "PP_ORIGINATING_NUMBER":"Replace with your Pinpoint Originating Number","PP_PROJECT_ID":"Replace with your Pinpoint Project ID"}'
+      Tags:
+        -
+          Key: AppName
+          Value: CBHelper
+
+  CBHelperdialSF:
+    Type: AWS::Serverless::StateMachine
+    Properties:
+      DefinitionUri: statemachine/CBHelper-dial.asl.json
+      Role: !GetAtt dialSFRole.Arn
+      DefinitionSubstitutions:
+        dial: !GetAtt dial.Arn
+        getAvailableAgents: !GetAtt getAvailableAgents.Arn
+
+  CBHelperPYTZLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      ContentUri: CBHelper-pytzlayer/
+      CompatibleRuntimes:
+        - python3.6
+        - python3.7
+        - python3.8
+    Metadata:
+      BuildMethod: python3.8
+
+
+  dial:
+    Type: AWS::Serverless::Function 
+    Properties:
+      Role: !GetAtt LambdaRole.Arn
+      CodeUri: CBHelper-dial/
+      Handler: lambda_function.lambda_handler
+      Layers:
+        - !Ref CBHelperPYTZLayer
+      Environment: 
+        Variables:
+          CONTACTS_TABLE: !Ref cbScheduledCalls
+          CONFIG_SECRET: !Ref CBHelperconfig
+  notify:
+    Type: AWS::Serverless::Function
+    Properties:
+      Role: !GetAtt LambdaRole.Arn
+      CodeUri: CBHelper-notify/
+      Handler: lambda_function.lambda_handler
+      Environment:
+        Variables:
+          CONFIG_SECRET: !Ref CBHelperconfig
+
+  evaluateCallBack:
+    Type: AWS::Serverless::Function 
+    Properties:
+      Role: !GetAtt LambdaRole.Arn
+      CodeUri: CBHelper-evaluateCallBack/
+      Handler: lambda_function.lambda_handler
+      Layers:
+        - !Ref CBHelperPYTZLayer
+      Environment: 
+        Variables:
+          CONTACTS_TABLE: !Ref cbScheduledCalls
+          CONFIG_SECRET: !Ref CBHelperconfig
+  
+  getAvailableAgents:
+    Type: AWS::Serverless::Function 
+    Properties:
+      Role: !GetAtt LambdaRole.Arn
+      CodeUri: CBHelper-getAvailableAgents/
+      Handler: lambda_function.lambda_handler
+      Environment: 
+        Variables:
+          CONTACTS_TABLE: !Ref cbScheduledCalls
+          CONFIG_SECRET: !Ref CBHelperconfig
+
+
+  removeFromQueue:
+    Type: AWS::Serverless::Function 
+    Properties:
+      Role: !GetAtt LambdaRole.Arn
+      CodeUri: CBHelper-removeFromQueue/
+      Handler: lambda_function.lambda_handler
+      Environment: 
+        Variables:
+          CONTACTS_TABLE: !Ref cbScheduledCalls
+
+  scheduleCall:
+    Type: AWS::Serverless::Function 
+    Properties:
+      Role: !GetAtt LambdaRole.Arn
+      CodeUri: CBHelper-scheduleCall/
+      Handler: lambda_function.lambda_handler
+      Layers:
+        - !Ref CBHelperPYTZLayer
+      Environment: 
+        Variables:
+          CONTACTS_TABLE: !Ref cbScheduledCalls
+
+  startScheduledCalls:
+    Type: AWS::Serverless::Function 
+    Properties:
+      Role: !GetAtt LambdaRole.Arn
+      CodeUri: CBHelper-startScheduledCalls/
+      Handler: lambda_function.lambda_handler
+      Layers:
+        - !Ref CBHelperPYTZLayer
+      Environment: 
+        Variables:
+          CONTACTS_TABLE: !Ref cbScheduledCalls
+          MACHINE_ID: !Ref CBHelperdialSF
+      Events:
+        Trigger:
+          Type: Schedule
+          Properties:
+            Enabled: True
+            Schedule: 'cron(*/10 * ? * MON-SUN *)'
+            Name: CBTrigger
+Outputs:
+  dial:
+    Description: "dial Lambda ARN"
+    Value: !GetAtt dial.Arn
+  getAvailableAgents:
+    Description: "getAvailableAgents Lambda ARN"
+    Value: !GetAtt getAvailableAgents.Arn
+  evaluateCallBack:
+    Description: "evaluateCallBack Lambda ARN"
+    Value: !GetAtt evaluateCallBack.Arn  
+  removeFromQueue:
+    Description: "removeFromQueue Lambda ARN"
+    Value: !GetAtt removeFromQueue.Arn  
+  scheduleCall:
+    Description: "scheduleCall Lambda ARN"
+    Value: !GetAtt scheduleCall.Arn  
+  startScheduledCalls:
+    Description: "startScheduledCalls Lambda ARN"
+    Value: !GetAtt startScheduledCalls.Arn  
+    
+  LambdaRole:
+    Description: "Lambda Functions Role"
+    Value: !GetAtt LambdaRole.Arn
+  SFRole:
+    Description: "StepFunctions Role ARN"
+    Value: !GetAtt dialSFRole.Arn
+  
