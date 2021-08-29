@@ -109,6 +109,7 @@ Input to functions needs to be specified as contact attributes using the "Set co
 Functions output needs to be added as contact attributes with the "Set contact attributes" block to be able to use it during the contact flow. Select "User Defined" as the Destination Type and use the same output name as the Destination Attribute. Select "Use Attribute" -> "External" and specify the function output name.
 The evaluateCallBack function results provide either a valid/notvalid response or a belowXX tier if the "slopedperiod" attribute is set to true prior to invoking the function. 
 
+#### evaluateCallBack function
 
 | function | input | Notes |
 |:--------:|:-------------:|:-------------:|
@@ -117,11 +118,14 @@ The evaluateCallBack function results provide either a valid/notvalid response o
 |evaluateCallBack |maximumcbcontacts [Number][OPTIONAL] | Number of contacts to accept for callback.|
 |evaluateCallBack |slopedperiod [True/False] [OPTIONAL]| Indicates if a callbacks should be accepted at reduced rate when approaching the closing hours.|
 
+#### scheduleCall function
 
 | function | input | Notes |
 |:--------:|:-------------:|:-------------:|
 |scheduleCall | timezone [TZ name] | Timezone such as:  US/Central|
 |scheduleCall |  wakeTime [4 digits] | 24 hour time string such as: 1830 |
+
+#### notify function
 
 | function | input | Notes |
 |:--------:|:-------------:|:-------------:|
