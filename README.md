@@ -115,11 +115,18 @@ The evaluateCallBack function results provide either a valid/notvalid response o
 |evaluateCallBack | timezone [Area/Location][REQUIRED]| Timezone name from TZ Database such as: US/Central.|
 |evaluateCallBack |minimumperiod [minutes][OPTIONAL]| Minimum period of time in minutes to accept calls.If omitted, a default of 60 is considered |
 |evaluateCallBack |maximumcbcontacts [Number][OPTIONAL] | Number of contacts to accept for callback.|
-|evaluateCallBack |slopedperiod [True/False] [OPTIONAL]| Indicates if a callbacks should be accepted at reduced rate when approaching the closing hours.| 
+|evaluateCallBack |slopedperiod [True/False] [OPTIONAL]| Indicates if a callbacks should be accepted at reduced rate when approaching the closing hours.|
 
+
+| function | input | Notes |
+|:--------:|:-------------:|:-------------:|
 |scheduleCall | timezone [TZ name] | Timezone such as:  US/Central|
 |scheduleCall |  wakeTime [4 digits] | 24 hour time string such as: 1830 |
+
+| function | input | Notes |
+|:--------:|:-------------:|:-------------:|
 |notify |wakeTime |24 hour time string such as: 1830
+
 
 |  function | output | Notes |
 |:--------:|:-------------:|:-------------:|
