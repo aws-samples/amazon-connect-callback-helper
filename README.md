@@ -1,5 +1,5 @@
 # Amazon Connect Power Dialer
-This project contains source code and supporting files for enhancing callback use cases. The functions allow to filter callback offerings based on existing queued callback calls, repeated callback attempts and scheduling callbacks for a separate time.
+This project contains source code and supporting files for enhancing callback use cases. The functions allow to filter callback offerings based on existing queued callback calls, repeated callback attempts and scheduling callbacks for a user selected time.
 
 
 ## Deployed resources
@@ -8,13 +8,15 @@ The project includes a cloud formation template with a Serverless Application Mo
 
 ### AWS Lambda functions
 
-- dial: Places calls using Amazon Connect boto3's start_outbound_voice_contact method.
+- dial: Places calls using Amazon Connect boto3's start_outbound_voice_contact method. 
 - getAvailAgents: Gets agents available in the associated queue.
 - evaluateCallBack: Replies with a valid tier depending on the remaining contact center hours of opperation remaining time.
 - removeFromQueue: Removes contact from queue.
-- scheduleCall: Adds contact to scheduled calls list.
+- scheduleCall: Adds contact to scheduled calls list. This will accept user input and round the minute figure to the lower 0 (14:34 -> 14:30).
 - startScheduledCalls: Trigger based on an evenbrige schedule, queries for scheduled calls and places respective calls.
 - notify: Send an SMS message using Amazon Pinpoint.
+
+Lambda functions evaluateCallBack, scheduleCall,remoteFromQueue and notify are the ones invoked from Amazon Connect Contactflows. 
 
 ### Secrets Manager Secrets
 A secret will be created to store the associated configuration.
@@ -25,6 +27,10 @@ A secret will be created to store the associated configuration.
 
 ### DynamoDB tables
 - scheduledCalls: Dialing list for the contacts.
+
+
+### Eventbridge event schedule
+This is used to place calls. The granularity is set to trigger every 10 minutes (which matches the scheduleCall function definition to round calls to the lower 10).
 
 ### IAM roles
 - dialSFRole: Dialing Step Functions state Machine IAM role.
@@ -37,11 +43,12 @@ A secret will be created to store the associated configuration.
 3. Cloud9 IDE or AWS and SAM tools installed and properly configured with administrator credentials.
 
 ## Deploy the solution
-1. Clone this repo.
+
+#### 1. Clone this repo.
 
 `git clone https://github.com/aws-samples/amazon-connect-callback-helper`
 
-2. Build the solution with SAM.
+#### 2. Build the solution with SAM.
 
 `sam build` 
 
@@ -50,18 +57,18 @@ if you get an error message about requirements you can try using containers.
 `sam build -u` 
 
 
-3. Deploy the stack.
+#### 3. Deploy the stack.
 
 `sam deploy -g`
 
 SAM will ask for the name of the application (use "PowerDialer" or something similar) as all resources will be grouped under it; Region and a confirmation prompt before deploying resources, enter y.
 SAM can save this information if you plan un doing changes, answer Y when prompted and accept the default environment and file name for the configuration.
 
-4. Claim a number within Amazon Pinpoint.
+#### 4. Claim a number within Amazon Pinpoint.
 
 In the region selected for deployment, create an Amazon Pinpoint project, enable SMS on the configuration and claim a number to be used. Keep record of the region, project ID and number.
 
-## Callback helper configuration
+### Callback helper configuration
 
 The callback helper configuration is defined using a secret in Secrets Manager. To identify the secret, browse to the Lambda console -> Applications tab, identify the Secrets Manager secret in the deployed application.
 In the Secrets Manager console, locate the secret and replace the default values with the associated parameters from your instance and Amazon Pinpoint project.
@@ -76,9 +83,9 @@ In the Secrets Manager console, locate the secret and replace the default values
 | PP_PROJECT_ID | Amazon Pinpoint project ID.|
 
 
-## Amazon Connect configuration
+### Amazon Connect configuration
 
-1. Add functions to Amazon Connect Instance.
+#### 1. Add functions to Amazon Connect Instance.
 
 In the Amazon Connect console (General instance configuration), add the following Lambda functions in the contact flows section:
 
@@ -87,7 +94,7 @@ In the Amazon Connect console (General instance configuration), add the followin
 - scheduleCall.
 - notify.
 
-2. Add functions to contactflow.
+#### 2. Add functions to contactflow.
 
 On the contactflow, add Lamda invokation for the following functions:
 
@@ -120,7 +127,7 @@ The evaluateCallBack function results provide either a valid/notvalid response o
 |scheduleCall | None | |
 |notify| None ||
 
-3. Create outbound whisper contactflow.
+#### 3. Create outbound whisper contactflow.
 
 Create outbound whisper contact flow with an Lambda function invoke and select the removeFromQueue function. This will remove the contact from the scheduledCalls table.
 
