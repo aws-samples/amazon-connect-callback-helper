@@ -23,7 +23,7 @@ A secret will be created to store the associated configuration.
 
 ### Step Functions
 
-- CBHelperdial: Provides the dialing functionality.
+- CBHelperdial: Provides the dialing functionality to place scheduled calls. The implemented logic checks for available agents before starting the voice call. 
 
 ### DynamoDB tables
 - scheduledCalls: Dialing list for the contacts.
@@ -41,6 +41,8 @@ This is used to place calls. The granularity is set to trigger every 10 minutes 
 1. Amazon Connect Instance already set up.
 2. AWS Console Access with administrator account.
 3. Cloud9 IDE or AWS and SAM tools installed and properly configured with administrator credentials.
+4. Dedicated queue for callbacks. Scheduled calls are triggered on the user selected time and available agents are required before initiating the call.
+
 
 ## Deploy the solution
 
@@ -103,7 +105,7 @@ On the contactflow, add Lamda invokation for the following functions:
 - scheduleCall.
 - notify.
 
-Input to functions needs to be specified as contact attributes using the "Set contact attributes" prior to invoking the function. Add a "Set contact attributes" block, select "User Defined" and specify the required inputs as shown below.
+Input to functions needs to be specified as contact attributes using the "Set contact attributes" prior to invoking the function. Add a "Set contact attributes" block, select "User Defined" and specify the required inputs as shown below. wakeTime attribute is used to provide the user selected time for the callback, add a block with a "Get customer input" and one with "Set contact attributes" to provide this attribute to the scheduleCall function.
 Functions output needs to be added as contact attributes with the "Set contact attributes" block to be able to use it during the contact flow. Select "User Defined" as the Destination Type and use the same output name as the Destination Attribute. Select "Use Attribute" -> "External" and specify the function output name.
 The evaluateCallBack function results provide either a valid/notvalid response or a belowXX tier if the "slopedperiod" attribute is set to true prior to invoking the function. 
 
