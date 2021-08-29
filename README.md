@@ -50,7 +50,7 @@ if you get an error message about requirements you can try using containers.
 `sam build -u` 
 
 
-3. Deploy the solution.
+3. Deploy the stack.
 
 `sam deploy -g`
 
@@ -61,7 +61,7 @@ SAM can save this information if you plan un doing changes, answer Y when prompt
 
 In the region selected for deployment, create an Amazon Pinpoint project, enable SMS on the configuration and claim a number to be used. Keep record of the region, project ID and number.
 
-## Callback helper parameters.
+## Callback helper configuration
 
 In the Lambda console, from the Applications tab, identify the Secrets Manager secret.
 In the Secrets Manager console, locate the associated secret and replace the default values with the associated parameters from your instance and Amazon Pinpoint project.
@@ -76,7 +76,9 @@ In the Secrets Manager console, locate the associated secret and replace the def
 | PP_PROJECT_ID | Amazon Pinpoint project ID.|
 
 
-5. Add functions to Amazon Connect
+## Amazon Connect configuration
+
+1. Add functions to Amazon Connect Instance.
 
 In the Amazon Connect console (General instance configuration), add the following Lambda functions in the contact flows section:
 
@@ -85,8 +87,7 @@ In the Amazon Connect console (General instance configuration), add the followin
 - scheduleCall.
 - notify.
 
-
-6. Add functions to the contactflow.
+2. Add functions to contactflow.
 
 On the contactflow, add Lamda invokation for the following functions:
 
@@ -110,14 +111,14 @@ Functions output needs to be added as contact attributes with the "Set contact a
 |scheduleCall. |  wakeTime | 24 hour time string such as: 1830 |
 |notify.|wakeTime |24 hour time string such as: 1830
 
-|  function | output | values |
+|  function | output | Notes |
 |:--------:|:-------------:|:-------------:|
-|evaluateCallBack. | cbTier | valid/notvalid or below100/below75/below50/below25 if 
-|removeFromQueue. | None | |
-|scheduleCall. | None | |
-|notify.|
+|evaluateCallBack | cbTier | valid/notvalid or below100/below75/below50/below25 if 
+|removeFromQueue | None | |
+|scheduleCall | None | |
+|notify| None ||
 
-7. Create outbound whisper.
+3. Create outbound whisper.
 
 Create outbound whisper contact flow with an Lambda function invoke and select the removeFromQueue function. This will remove the contact from the scheduledCalls table.
 
