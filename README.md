@@ -1,5 +1,5 @@
 # Amazon Connect Power Dialer
-This project contains source code and supporting files for supporting native and scheduled callback use case.
+This project contains source code and supporting files for enhancing callback use cases. The functions allow to filter callback offerings based on existing queued callback calls, repeated callback attempts and scheduling callbacks for a separate time.
 
 
 ## Deployed resources
@@ -63,8 +63,8 @@ In the region selected for deployment, create an Amazon Pinpoint project, enable
 
 ## Callback helper configuration
 
-In the Lambda console, from the Applications tab, identify the Secrets Manager secret.
-In the Secrets Manager console, locate the associated secret and replace the default values with the associated parameters from your instance and Amazon Pinpoint project.
+The callback helper configuration is defined using a secret in Secrets Manager. To identify the secret, browse to the Lambda console -> Applications tab, identify the Secrets Manager secret in the deployed application.
+In the Secrets Manager console, locate the secret and replace the default values with the associated parameters from your instance and Amazon Pinpoint project.
 
 | parameter   | currentValue |
 |----------|:-------------:|
@@ -96,29 +96,31 @@ On the contactflow, add Lamda invokation for the following functions:
 - scheduleCall.
 - notify.
 
-Input to functions needs to be specified as contact attributes using the "Set contact attributes". Select "User Defined" and specify the required inputs as shown below.
-Functions output needs to be added as contact attributes with the "Set contact attributes" block. Select "User Defined" as the Destination Type and use the same output name as the Destination Attribute. Select "Use Attribute" -> "External" and specify the function output name.
+Input to functions needs to be specified as contact attributes using the "Set contact attributes" prior to invoking the function. Add a "Set contact attributes" block, select "User Defined" and specify the required inputs as shown below.
+Functions output needs to be added as contact attributes with the "Set contact attributes" block to be able to use it during the contact flow. Select "User Defined" as the Destination Type and use the same output name as the Destination Attribute. Select "Use Attribute" -> "External" and specify the function output name.
+The evaluateCallBack function results provide either a valid/notvalid response or a belowXX tier if the "slopedperiod" attribute is set to true prior to invoking the function. 
 
 
 | function | input | Notes |
 |:--------:|:-------------:|:-------------:|
-|evaluateCallBack | timezone [REQUIRED]| Timezone such as: US/Central.|
-|evaluateCallBack |minimumperiod [OPTIONAL]| Minimum period of time in minutes to accept calls.If omitted, a default of 60 is considered |
-|evaluateCallBack |maximumcbcontacts [OPTIONAL] | Number of contacts to accept for callback.|
+|evaluateCallBack | timezone [Area/Location][REQUIRED]| Timezone name from TZ Database such as: US/Central.|
+|evaluateCallBack |minimumperiod [minutes][OPTIONAL]| Minimum period of time in minutes to accept calls.If omitted, a default of 60 is considered |
+|evaluateCallBack |maximumcbcontacts [Number][OPTIONAL] | Number of contacts to accept for callback.|
 |evaluateCallBack |slopedperiod [True/False] [OPTIONAL]| Indicates if a callbacks should be accepted at reduced rate when approaching the closing hours.| 
 
-|scheduleCall. | timezone | Timezone such as:  US/Central|
-|scheduleCall. |  wakeTime | 24 hour time string such as: 1830 |
-|notify.|wakeTime |24 hour time string such as: 1830
+|scheduleCall | timezone [TZ name] | Timezone such as:  US/Central|
+|scheduleCall |  wakeTime [4 digits] | 24 hour time string such as: 1830 |
+|notify |wakeTime |24 hour time string such as: 1830
 
 |  function | output | Notes |
 |:--------:|:-------------:|:-------------:|
-|evaluateCallBack | cbTier | valid/notvalid or below100/below75/below50/below25 if 
+|evaluateCallBack | cbTier | valid/notvalid [If slopedperiod is omitted]
+|evaluateCallBack | cbTier | below100/below75/below50/below25 [If slopedperiod is set to true]
 |removeFromQueue | None | |
 |scheduleCall | None | |
 |notify| None ||
 
-3. Create outbound whisper.
+3. Create outbound whisper contactflow.
 
 Create outbound whisper contact flow with an Lambda function invoke and select the removeFromQueue function. This will remove the contact from the scheduledCalls table.
 
