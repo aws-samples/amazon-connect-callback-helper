@@ -131,6 +131,7 @@ The evaluateCallBack function results provide either a valid/notvalid response o
 |:--------:|:-------------:|:-------------:|
 |notify |wakeTime |24 hour time string such as: 1830
 
+#### Function outputs
 
 |  function | output | Notes |
 |:--------:|:-------------:|:-------------:|
