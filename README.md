@@ -1,4 +1,4 @@
-# Amazon Connect Power Dialer
+# Amazon Connect Callback Helper
 This project contains source code and supporting files for enhancing callback use cases. The functions allow to filter callback offerings based on existing queued callback calls, repeated callback attempts and scheduling callbacks for a user selected time.
 
 
