@@ -6,7 +6,7 @@ Globals:
   Function:
     Timeout: 60
     MemorySize: 128
-    Runtime: python3.8
+    Runtime: python3.9
 
 Resources:
 
@@ -233,11 +233,12 @@ Resources:
     Properties:
       ContentUri: CBHelper-pytzlayer/
       CompatibleRuntimes:
-        - python3.6
-        - python3.7
-        - python3.8
+        - python3.9
+        - python3.10
+        - python3.11
+        - python3.12
     Metadata:
-      BuildMethod: python3.8
+      BuildMethod: python3.9
 
 
   dial:
