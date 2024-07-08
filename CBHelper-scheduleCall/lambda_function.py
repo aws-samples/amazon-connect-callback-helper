@@ -14,13 +14,14 @@ def lambda_handler(event, context):
     contactId = str(event['Details']['ContactData']['ContactId'])
     contactPhone = str(event['Details']['ContactData']['CustomerEndpoint']['Address'])
     timezone = str(event['Details']['ContactData']['Attributes']['timezone'])
-    
+    attributes = str(event['Details']['ContactData']['Attributes']
+
     if(wakeTime == "None"):
         wakeTimeFormat = get_time(timezone)
     else:
         wakeTimeFormat = get_custom_time(wakeTime,timezone)
         
-    response = add_to_queue(contactPhone, wakeTimeFormat, contactId, CONTACT_TABLE)
+    response = schedule_callback(contactPhone, wakeTimeFormat, attributes,CONTACT_TABLE)
     
     return {
         'statusCode': 200,
@@ -69,3 +70,35 @@ def add_to_queue(phone, wakeTime,contactId, table):
         print (e)
     else:
         return response
+
+def schedule_callback(phone, wakeTime, attributes,table):
+    dynamodb = boto3.resource('dynamodb')
+    table = dynamodb.Table(table)
+
+    timestamp = str(datetime.now())
+    timetolive = 7*24*60*60 + int(time.time())
+    
+    try:
+        response = table.update_item(
+            Key={
+                'phoneNumber': phone
+            }, 
+            UpdateExpression='SET #item = :newState, #item2 = :newState2, #item3 = :newState3',  
+            ExpressionAttributeNames={
+                '#item': 'wakeTime',
+                '#item2': 'attributes',
+                '#item3': 'ttl'
+                
+            },
+            ExpressionAttributeValues={
+                ':newState': str(wakeTime),
+                ':newState2': attributes
+                ':newState3': timetolive
+            },
+            ReturnValues="UPDATED_NEW")
+        print (response)
+    except Exception as e:
+        print (e)
+    else:
+        return response
+

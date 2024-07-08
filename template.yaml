@@ -42,6 +42,9 @@ Resources:
         PointInTimeRecoveryEnabled: True
       SSESpecification:
           SSEEnabled: True
+      TimeToLiveSpecification:
+          AttributeName: "ttl"
+          Enabled: True
 
   dialSFRole:
     Type: AWS::IAM::Role
@@ -99,6 +102,16 @@ Resources:
                 Resource:
                   - !GetAtt dial.Arn
                   - !GetAtt getAvailableAgents.Arn
+        -
+          PolicyName: ContactQueues
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              -
+                Effect: Allow
+                Action: sqs:*
+                Resource:
+                  - '*'
   
   LambdaRole:
     Type: AWS::IAM::Role
@@ -253,6 +266,25 @@ Resources:
         Variables:
           CONTACTS_TABLE: !Ref cbScheduledCalls
           CONFIG_SECRET: !Ref CBHelperconfig
+  queue:
+    Type: AWS::Serverless::Function 
+    Properties:
+      Role: !GetAtt LambdaRole.Arn
+      CodeUri: CBHelper-queueCalls/
+      Handler: lambda_function.lambda_handler
+      Layers:
+        - !Ref CBHelperPYTZLayer
+      Environment: 
+        Variables:
+          CONTACTS_TABLE: !Ref cbScheduledCalls
+          PRIORITY_SQS_URL: ''
+      Events:
+        Trigger:
+          Type: Schedule
+          Properties:
+            Enabled: False
+            Schedule: 'cron(*/10 * ? * MON-SUN *)'
+            Name: CBTrigger
   notify:
     Type: AWS::Serverless::Function
     Properties:
@@ -326,7 +358,7 @@ Resources:
         Trigger:
           Type: Schedule
           Properties:
-            Enabled: True
+            Enabled: False
             Schedule: 'cron(*/10 * ? * MON-SUN *)'
             Name: CBTrigger
 Outputs:
