@@ -19,7 +19,7 @@ def lambda_handler(event, context):
     contacts = get_contacts(str(wakeTime), CONTACTS_TABLE, WAKE_INDEX)
     for contact in contacts:
         print ("Encolando contacto: " + contact['phoneNumber'])
-        queue_contact(contact['attributes']['custID'],contact['attributes']['phone'],contact['attributes'],sqs_url)
+        queue_contact(contact['attributes']['custID'],contact['attributes']['phone'],contact['attributes'],PRIORITY_SQS_URL)
         
     return True
 
@@ -73,6 +73,7 @@ def queue_contact(custID,phone,attributes,sqs_url):
         return False
     else:
         return response['MessageId']
+
     
 def place_call(phoneNumber, contactFlow,connectID,queue):
     connect_client = boto3.client('connect')
