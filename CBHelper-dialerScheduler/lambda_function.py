@@ -21,7 +21,7 @@ def lambda_handler(event, context):
     else:
         contactPhone = str(event['Details']['ContactData']['CustomerEndpoint']['Address'])
     
-    attributes = str(event['Details']['ContactData']['Attributes']
+    attributes = event['Details']['ContactData']['Attributes']
 
     wakeTimeFormat = get_custom_time(wakeTime,DifferentDay,CallbackDate,TIME_ZONE)
         
