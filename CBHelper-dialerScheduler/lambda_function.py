@@ -3,7 +3,8 @@
 import json
 import boto3
 import os
-import datetime
+from datetime import datetime
+import time
 import pytz
 from boto3.dynamodb.conditions import Key
 
@@ -13,7 +14,7 @@ def lambda_handler(event, context):
     TIME_ZONE= os.environ['TIME_ZONE']
 
     wakeTime = event['Details']['Parameters']['Views']['ViewResultData']['CallbackTime']
-    DifferentDay =event['Details']['Parameters']['Views']['ViewResultData'].get('NotToday','false')
+    NotToday =event['Details']['Parameters']['Views']['ViewResultData'].get('NotToday','false')
     CallbackDate = event['Details']['Parameters']['Views']['ViewResultData']['CallbackDate']
 
     if(event['Details']['Parameters']['Views']['ViewResultData'].get('3PConfirmation','false') == 'true'):
@@ -23,22 +24,24 @@ def lambda_handler(event, context):
     
     attributes = event['Details']['ContactData']['Attributes']
 
-    wakeTimeFormat = get_custom_time(wakeTime,DifferentDay,CallbackDate,TIME_ZONE)
+    wakeTimeFormat = get_custom_time(wakeTime,NotToday,CallbackDate,TIME_ZONE)
         
     response = schedule_callback(contactPhone, wakeTimeFormat, attributes,CONTACT_TABLE)
     
     return {
-        'statusCode': 200,
-        'body': json.dumps(response)
+        'statusCode': 200
     }
 
-def get_custom_time(time,date,different_day,date,time_zone):
-    timehour=int(time[0:2])
-    timemin=(int(time[2:4]) // 10 )* 10
-    datemonth=int(date[5:7])
-    dateday=int(date[8:10])
-    now = datetime.datetime.now(pytz.timezone(time_zone))
-    wakeTime = now.replace(month=datemonth,day=dateday,hour=timehour, minute=timemin, second=00,microsecond=00)
+def get_custom_time(cb_time,not_today,cb_date,time_zone):
+    now = datetime.now(pytz.timezone(time_zone))
+    timehour=int(cb_time[0:2])
+    timemin=(int(cb_time[3:5]) // 10 )* 10
+    if (not_today == 'true'):
+        datemonth=int(cb_date[5:7])
+        dateday=int(cb_date[8:10])
+        wakeTime = now.replace(month=datemonth,day=dateday,hour=timehour, minute=timemin, second=00,microsecond=00)
+    else:
+        wakeTime = now.replace(hour=timehour, minute=timemin, second=00,microsecond=00)
     utcWakeTime = wakeTime.astimezone(pytz.timezone('UTC'))
     return (utcWakeTime)
 
@@ -88,7 +91,7 @@ def schedule_callback(phone, wakeTime, attributes,table):
             },
             ExpressionAttributeValues={
                 ':newState': str(wakeTime),
-                ':newState2': attributes
+                ':newState2': attributes,
                 ':newState3': timetolive
             },
             ReturnValues="UPDATED_NEW")
