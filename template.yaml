@@ -8,8 +8,14 @@ Globals:
     MemorySize: 128
     Runtime: python3.9
 
-Resources:
 
+Parameters:
+  TimeZone:
+    Type: String
+    Default: 'America/Mexico_City'
+    Description: Timezone for scheduled calls.
+
+Resources:
   cbScheduledCalls: 
     Type: AWS::DynamoDB::Table
     Properties: 
@@ -341,6 +347,19 @@ Resources:
       Environment: 
         Variables:
           CONTACTS_TABLE: !Ref cbScheduledCalls
+
+  dialerScheduler:
+    Type: AWS::Serverless::Function 
+    Properties:
+      Role: !GetAtt LambdaRole.Arn
+      CodeUri:  CBHelper-dialerScheduler/
+      Handler: lambda_function.lambda_handler
+      Layers:
+        - !Ref CBHelperPYTZLayer
+      Environment: 
+        Variables:
+          CONTACTS_TABLE: !Ref cbScheduledCalls
+          TIME_ZONE: !Ref TimeZone
 
   startScheduledCalls:
     Type: AWS::Serverless::Function 
