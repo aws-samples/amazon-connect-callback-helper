@@ -74,27 +74,6 @@ def queue_contact(custID,phone,attributes,sqs_url):
         return False
     else:
         return response['MessageId']
-
-
-def lambda_handler(event, context):
-    print(event)
-
-    CONTACT_TABLE= os.environ['CONTACTS_TABLE']
-
-    phoneNumber = event['contacts']['phoneNumber']
-    
-    #response = place_call(phoneNumber, CONTACT_FLOW_ID, CONNECT_INSTANCE_ID, CONNECT_QUEUE_ID)
-    queue_contact(custID,phone,attributes,sqs_url)
-    remove_contactId(phoneNumber,CONTACT_TABLE)
-    
-    if(response):
-        print("Valid response")
-        validNumber= True
-    else:
-        print("Invalid response")
-        validNumber=False
-
-    return {'validNumber':validNumber }
     
 def place_call(phoneNumber, contactFlow,connectID,queue):
     connect_client = boto3.client('connect')
