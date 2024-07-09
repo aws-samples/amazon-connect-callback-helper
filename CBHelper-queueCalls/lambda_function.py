@@ -19,7 +19,7 @@ def lambda_handler(event, context):
     contacts = get_contacts(str(wakeTime), CONTACTS_TABLE, WAKE_INDEX)
     for contact in contacts:
         print ("Encolando contacto: " + contact['phoneNumber'])
-        queue_contact(contact['attributes']['custID'],contact['attributes']['phone'],contact['attributes'],PRIORITY_SQS_URL)
+        queue_contact(contact['attributes']['custID'],contact['phoneNumber'],contact['attributes'],PRIORITY_SQS_URL)
         
     return True
 
