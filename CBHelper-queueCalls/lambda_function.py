@@ -12,7 +12,6 @@ PRIORITY_SQS_URL = os.environ['PRIORITY_SQS_URL']
 def lambda_handler(event, context):
 
     CONTACTS_TABLE= os.environ['CONTACTS_TABLE']
-    MACHINE_ID= os.environ['MACHINE_ID']
     WAKE_INDEX = 'wakeTime'
     TIME_ZONE='UTC'
     
